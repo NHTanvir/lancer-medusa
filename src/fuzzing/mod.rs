@@ -5,6 +5,7 @@ pub mod config;
 pub mod contracts;
 pub mod corpus;
 pub mod coverage;
+pub mod feedback;
 pub mod sequence_executor;
 pub mod sequence_generator;
 pub mod valuegeneration;
