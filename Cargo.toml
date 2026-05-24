@@ -14,9 +14,9 @@ anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = "0.3"
 revm = { version = "14", features = ["std"] }
-alloy-primitives = "0.7"
-alloy-json-abi = "0.7"
-alloy-sol-types = "0.7"
+alloy-primitives = "0.8"
+alloy-json-abi = "0.8"
+alloy-sol-types = "0.8"
 rayon = "1"
 dashmap = "5"
 serde = { version = "1", features = ["derive"] }
