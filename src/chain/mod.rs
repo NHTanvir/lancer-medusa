@@ -24,6 +24,7 @@ pub struct CallResult {
 }
 
 /// Opaque snapshot of chain state that can be restored later.
+#[derive(Clone)]
 pub struct ChainSnapshot {
     db: CacheDB<EmptyDB>,
     block_number: u64,
@@ -33,6 +34,7 @@ pub struct ChainSnapshot {
 // ── TestChain ────────────────────────────────────────────────────────────────
 
 /// In-process EVM chain backed by revm's `CacheDB<EmptyDB>`.
+#[derive(Clone)]
 pub struct TestChain {
     db: CacheDB<EmptyDB>,
     block_number: u64,
