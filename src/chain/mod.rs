@@ -3,11 +3,14 @@
 use anyhow::anyhow;
 use revm::{
     db::{CacheDB, EmptyDB},
+    inspector_handle_register,
     primitives::{
         AccountInfo, Address, Bytes, ExecutionResult, Output, TxKind, U256,
     },
     DatabaseCommit, Evm,
 };
+
+use crate::fuzzing::coverage::{CoverageInspector, LocalCoverage};
 
 // ── public data types ────────────────────────────────────────────────────────
 
@@ -197,6 +200,91 @@ impl TestChain {
         };
 
         Ok(call_result)
+    }
+
+    /// Like `call()` but also collects coverage via `CoverageInspector`.
+    ///
+    /// Returns `(CallResult, LocalCoverage)`.
+    pub fn call_with_coverage(
+        &mut self,
+        from: Address,
+        to: Address,
+        calldata: Bytes,
+        value: U256,
+    ) -> anyhow::Result<(CallResult, LocalCoverage)> {
+        self.ensure_funded(from);
+
+        // Swap the DB out so we can give ownership to the Evm.
+        let db = std::mem::replace(&mut self.db, CacheDB::new(EmptyDB::default()));
+        let block_number = self.block_number;
+        let block_timestamp = self.block_timestamp;
+
+        let mut inspector = CoverageInspector::new();
+
+        let mut evm = Evm::builder()
+            .with_db(db)
+            .with_external_context(&mut inspector)
+            .modify_block_env(|b| {
+                b.number = U256::from(block_number);
+                b.timestamp = U256::from(block_timestamp);
+                b.gas_limit = U256::from(u64::MAX);
+                b.basefee = U256::ZERO;
+            })
+            .modify_tx_env(|tx| {
+                tx.gas_limit = u64::MAX / 2;
+                tx.gas_price = U256::ZERO;
+                tx.caller = from;
+                tx.transact_to = TxKind::Call(to);
+                tx.data = calldata;
+                tx.value = value;
+            })
+            .append_handler_register(inspector_handle_register)
+            .build();
+
+        let result_and_state = evm
+            .transact()
+            .map_err(|e| anyhow!("call_with_coverage EVM error: {e:?}"))?;
+
+        let result = result_and_state.result;
+        evm.context.evm.db.commit(result_and_state.state);
+
+        // Reclaim the DB.
+        self.db = evm.into_context().evm.inner.db;
+
+        let coverage = inspector.take_coverage();
+
+        let call_result = match result {
+            ExecutionResult::Success {
+                output: Output::Call(bytes),
+                gas_used,
+                ..
+            } => CallResult {
+                success: true,
+                output: bytes,
+                gas_used,
+                revert_reason: None,
+            },
+            ExecutionResult::Success { gas_used, .. } => CallResult {
+                success: true,
+                output: Bytes::new(),
+                gas_used,
+                revert_reason: None,
+            },
+            ExecutionResult::Revert { output, gas_used } => CallResult {
+                success: false,
+                output: Bytes::new(),
+                gas_used,
+                revert_reason: Some(output),
+            },
+            ExecutionResult::Halt { gas_used, .. } => CallResult {
+                success: false,
+                output: Bytes::new(),
+                gas_used,
+                revert_reason: None,
+            },
+        };
+
+        Ok((call_result, coverage))
     }
 
     /// Save the current chain state and return a handle to it.
