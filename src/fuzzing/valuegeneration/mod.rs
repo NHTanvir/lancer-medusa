@@ -463,7 +463,7 @@ impl MutationalGenerator {
                     }
                     1 => {
                         // flip a random bit
-                        let bit = self.rng.gen_range(0u32..bits as u32);
+                        let bit = self.rng.gen_range(0u32..effective_bits(bits) as u32);
                         v ^ (U256::from(1u64) << bit as usize)
                     }
                     2 => {
@@ -498,7 +498,7 @@ impl MutationalGenerator {
                     }
                     1 => {
                         // flip a random bit in the raw representation
-                        let bit = self.rng.gen_range(0u32..bits as u32);
+                        let bit = self.rng.gen_range(0u32..effective_bits(bits) as u32);
                         let raw = v.into_raw();
                         let flipped = raw ^ (U256::from(1u64) << bit as usize);
                         I256::from_raw(flipped)
