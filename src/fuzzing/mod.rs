@@ -8,6 +8,10 @@ pub mod coverage;
 pub mod feedback;
 pub mod sequence_executor;
 pub mod sequence_generator;
+pub mod test_case;
+pub mod test_case_assertion;
+pub mod test_case_optimization;
+pub mod test_case_property;
 pub mod valuegeneration;
 
 use crate::fuzzing::config::FuzzingConfig;
